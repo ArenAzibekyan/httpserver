@@ -9,28 +9,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Server is an interface for http server
-type Server interface {
-	// ListenAndServe is a wrapper for http.Server.ListenAndServe method, that
-	// returns nil when Server is closed. Otherwise, it always returns non-nil error
-	ListenAndServe() error
-
-	// Run runs http server and gracefully shuts it down on context cancellation. It
-	// works well in conjunction with custom os signals handling via context (signal.NotifyContext)
-	Run(ctx context.Context) error
+// Server is a http server
+type Server struct {
+	httpServer      *http.Server
+	shutdownTimeout time.Duration
 }
 
-// New creates and returns new Server with given options. Default options:
+// New creates new Server with given options. Default options:
 // - read timeout 30s
 // - write timeout 30s
-// - shutdown timeout 5s
-func New(opts ...opt) Server {
-	srv := &server{
+// - shutdown timeout 15s
+func New(opts ...opt) *Server {
+	srv := &Server{
 		httpServer: &http.Server{
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
 		},
-		shutdownTimeout: 5 * time.Second,
+		shutdownTimeout: 15 * time.Second,
 	}
 
 	for _, fn := range opts {
@@ -40,14 +35,25 @@ func New(opts ...opt) Server {
 	return srv
 }
 
-// server implements Server
-type server struct {
-	httpServer      *http.Server
-	shutdownTimeout time.Duration
+// Run runs http server and gracefully shuts it down on context cancellation. It
+// works well in conjunction with custom os signals handling via context (signal.NotifyContext)
+func (s *Server) Run(ctx context.Context) error {
+	g, ctx := errgroup.WithContext(ctx)
+
+	// if listenAndServe returns non-nil error, ctx will be canceled
+	g.Go(s.listenAndServe)
+
+	g.Go(func() error {
+		<-ctx.Done()
+		return s.stop()
+	})
+
+	return g.Wait()
 }
 
-// ListenAndServe implements Server.ListenAndServe
-func (s *server) ListenAndServe() error {
+// listenAndServe is a wrapper for http.Server.ListenAndServe method, that
+// returns nil when Server is closed. Otherwise, it always returns non-nil error
+func (s *Server) listenAndServe() error {
 	err := s.httpServer.ListenAndServe()
 	if err != nil && errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -57,7 +63,7 @@ func (s *server) ListenAndServe() error {
 
 // stop stops server. At first it tries to shut down server gracefully
 // with timeout. If timeout exceeded, it closes the server immediately
-func (s *server) stop() error {
+func (s *Server) stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
 
@@ -68,27 +74,14 @@ func (s *server) stop() error {
 	return err
 }
 
-// Run implements Server.Run
-func (s *server) Run(ctx context.Context) error {
-	g, ctx := errgroup.WithContext(ctx)
+// Run is a shortcut for New(...).Run(ctx). Port and handler parameters
+// take precedence over the WithAddress and WithHandler options
+// respectively if they are passed too
+func Run(ctx context.Context, port uint16, handler http.Handler, opts ...opt) error {
+	opts = append(opts,
+		WithAddress("", port),
+		WithHandler(handler),
+	)
 
-	// if ListenAndServe returns non-nil error, Go cancels ctx
-	g.Go(s.ListenAndServe)
-
-	g.Go(func() error {
-		<-ctx.Done()
-		return s.stop()
-	})
-
-	return g.Wait()
-}
-
-// ListenAndServe is a shortcut for New(opts...).ListenAndServe()
-func ListenAndServe(opts ...opt) error {
-	return New(opts...).ListenAndServe()
-}
-
-// Run is a shortcut for New(opts...).Run(ctx)
-func Run(ctx context.Context, opts ...opt) error {
 	return New(opts...).Run(ctx)
 }

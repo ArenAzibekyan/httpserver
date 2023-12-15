@@ -9,6 +9,7 @@ import (
 	"github.com/ArenAzibekyan/httpserver/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -22,6 +23,20 @@ func main() {
 		})
 	})
 
-	err := httpserver.Run(ctx, 8080, r.Handler())
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return httpserver.Run(ctx, 8080, r.Handler())
+	})
+
+	g.Go(func() error {
+		return httpserver.Run(ctx, 8081, r.Handler())
+	})
+
+	g.Go(func() error {
+		return httpserver.Run(ctx, 8082, r.Handler())
+	})
+
+	err := g.Wait()
 	log.Err(err).Msg("http server stopped")
 }

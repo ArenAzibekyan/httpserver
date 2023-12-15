@@ -1,4 +1,4 @@
-module github.com/ArenAzibekyan/httpserver
+module github.com/ArenAzibekyan/httpserver/v2
 
 go 1.21.4
 
