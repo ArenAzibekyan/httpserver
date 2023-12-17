@@ -19,7 +19,7 @@ type Server struct {
 // - read timeout 30s
 // - write timeout 30s
 // - shutdown timeout 15s
-func New(opts ...opt) *Server {
+func New(opts ...Opt) *Server {
 	srv := &Server{
 		httpServer: &http.Server{
 			ReadTimeout:  30 * time.Second,
@@ -77,7 +77,7 @@ func (s *Server) stop() error {
 // Run is a shortcut for New(...).Run(ctx). Port and handler parameters
 // take precedence over the WithAddress and WithHandler options
 // respectively if they are passed too
-func Run(ctx context.Context, port uint16, handler http.Handler, opts ...opt) error {
+func Run(ctx context.Context, port uint16, handler http.Handler, opts ...Opt) error {
 	opts = append(opts,
 		WithAddress("", port),
 		WithHandler(handler),

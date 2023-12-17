@@ -7,57 +7,57 @@ import (
 	"time"
 )
 
-type opt func(*Server)
+type Opt func(*Server)
 
-func WithAddress(host string, port uint16) opt {
+func WithAddress(host string, port uint16) Opt {
 	return func(s *Server) {
 		s.httpServer.Addr = fmt.Sprintf("%s:%d", host, port)
 	}
 }
 
-func WithHandler(handler http.Handler) opt {
+func WithHandler(handler http.Handler) Opt {
 	return func(s *Server) {
 		s.httpServer.Handler = handler
 	}
 }
 
-func WithTLSConfig(conf *tls.Config) opt {
+func WithTLSConfig(conf *tls.Config) Opt {
 	return func(s *Server) {
 		s.httpServer.TLSConfig = conf
 	}
 }
 
-func WithReadTimeout(d time.Duration) opt {
+func WithReadTimeout(d time.Duration) Opt {
 	return func(s *Server) {
 		s.httpServer.ReadTimeout = d
 	}
 }
 
-func WithReadHeaderTimeout(d time.Duration) opt {
+func WithReadHeaderTimeout(d time.Duration) Opt {
 	return func(s *Server) {
 		s.httpServer.ReadHeaderTimeout = d
 	}
 }
 
-func WithWriteTimeout(d time.Duration) opt {
+func WithWriteTimeout(d time.Duration) Opt {
 	return func(s *Server) {
 		s.httpServer.WriteTimeout = d
 	}
 }
 
-func WithIdleTimeout(d time.Duration) opt {
+func WithIdleTimeout(d time.Duration) Opt {
 	return func(s *Server) {
 		s.httpServer.IdleTimeout = d
 	}
 }
 
-func WithMaxHeaderBytes(i int) opt {
+func WithMaxHeaderBytes(i int) Opt {
 	return func(s *Server) {
 		s.httpServer.MaxHeaderBytes = i
 	}
 }
 
-func WithShutdownTimeout(d time.Duration) opt {
+func WithShutdownTimeout(d time.Duration) Opt {
 	return func(s *Server) {
 		s.shutdownTimeout = d
 	}
